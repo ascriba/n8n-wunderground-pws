@@ -37,7 +37,7 @@
       "name": "Create/Check Table",
       "credentials": {
         "postgres": {
-          "id": "Fte713NmC6GEA2OL",
+          "id": "********",
           "name": "Postgres account"
         }
       }
