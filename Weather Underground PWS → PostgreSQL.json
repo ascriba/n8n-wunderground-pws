@@ -1,0 +1,270 @@
+{
+  "name": "Weather Underground PWS → PostgreSQL",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d3efe209-463e-45d5-a0cb-03c37e10cc98",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TABLE IF NOT EXISTS Wetterdaten (\n  id SERIAL PRIMARY KEY,\n  obsTimeLocal TIMESTAMP WITHOUT TIME ZONE,\n  solarRadiation NUMERIC(5,2),\n  uv NUMERIC(5,2),\n  winddir NUMERIC(5,2),\n  humidity NUMERIC(5,2),\n  temperature NUMERIC(5,2),\n  heatIndex NUMERIC(5,2),\n  dewpt NUMERIC(5,2),\n  windChill NUMERIC(5,2),\n  windSpeed NUMERIC(5,2),\n  windGust NUMERIC(5,2),\n  pressure NUMERIC(7,2),\n  precipRate NUMERIC(5,2),\n  precipTotal NUMERIC(5,2),\n  created_at TIMESTAMP DEFAULT NOW()\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "23df05f1-98bf-4f59-8367-6c9c7a9b0f59",
+      "name": "Create/Check Table",
+      "credentials": {
+        "postgres": {
+          "id": "Fte713NmC6GEA2OL",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"userStationId\": \"YOUR_STATION_ID\",\n  \"userUnits\": \"m\",\n  \"numericPrecision\": \"decimal\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        0
+      ],
+      "id": "e76e0183-b6e5-4660-b927-9773158ebbdc",
+      "name": "Configuration"
+    },
+    {
+      "parameters": {
+        "url": "https://api.weather.com/v2/pws/observations/current",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "stationId",
+              "value": "={{ $json.userStationId }}"
+            },
+            {
+              "name": "format",
+              "value": "json"
+            },
+            {
+              "name": "units",
+              "value": "={{ $json.userUnits }}"
+            },
+            {
+              "name": "numericPrecision",
+              "value": "={{ $json.numericPrecision }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        736,
+        0
+      ],
+      "id": "8066e7ff-9e20-472e-a468-0b9bfd7b445a",
+      "name": "Current Conditions",
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "GLeG1Nsks043ooz1",
+          "name": "Query Auth account Wunderground"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "value": "wetterdaten",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "solarradiation": "={{ $json.observations[0].solarRadiation }}",
+            "uv": "={{ $json.observations[0].uv }}",
+            "winddir": "={{ $json.observations[0].winddir }}",
+            "humidity": "={{ $json.observations[0].humidity }}",
+            "temperature": "={{ $json.observations[0].metric.temp }}",
+            "heatindex": "={{ $json.observations[0].metric.heatIndex }}",
+            "dewpt": "={{ $json.observations[0].metric.dewpt }}",
+            "windchill": "={{ $json.observations[0].metric.windChill }}",
+            "windspeed": "={{ $json.observations[0].metric.windSpeed }}",
+            "windgust": "={{ $json.observations[0].metric.windGust }}",
+            "pressure": "={{ $json.observations[0].metric.pressure }}",
+            "preciprate": "={{ $json.observations[0].metric.precipRate }}",
+            "preciptotal": "={{ $json.observations[0].metric.precipTotal }}",
+            "obstimelocal": "={{ $json.observations[0].obsTimeLocal }}"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        960,
+        0
+      ],
+      "id": "a7322831-4aae-447f-866b-61afa2c32a5e",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "Fte713NmC6GEA2OL",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "### Configuration \n**userStationId**: ID as registered by wunderground.com look at https://www.wunderground.com/wundermap,\n  **userUnits**: \"**m**\" -> metric, \"**e**\" -> English units or\"**h**\" -> Hybrid inits (UK)\n\n  **numericPrecision**: \"**decimal**\", Optional parameter.  Set to ‘decimal’ to ensure data is returned in decimal format when needed.  Will return integers if this value is not used.",
+        "height": 544,
+        "width": 256
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        400,
+        -368
+      ],
+      "id": "83b16970-fac4-4408-b549-f99bdd3488cd",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "### Database Setup (PostgreSQL)\n\nBefore running the workflow, you must create the target table in your PostgreSQL database. This table is designed to store the weather metrics retrieved from the API. In this example the table is named \"Wetterdaten\".\n",
+        "height": 544,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        144,
+        -368
+      ],
+      "id": "82fd3907-7c7e-4b5a-8562-03aed16f17f5",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "### Weather Underground API Setup\nTo use this node, you need to configure your private weather station (PWS) credentials:\n\n#### Authentication\n- Under **Authentication**, select **Generic Credential Type**.\n- Choose **Query Auth**.\n- Create a new credential:\n  - **Name:** `apiKey`\n  - **Value:** Enter your API Key from [wunderground.com/member/api-keys](https://www.wunderground.com/member/api-keys).",
+        "height": 544,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        672,
+        -368
+      ],
+      "id": "249fbb65-2a52-407d-962c-ed8b4ce287e9",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "###  Optinoal: Automatic Wind Direction Mapping in SQL\nThis setup automatically converts numeric wind degrees into human-readable English text (e.g., 'North-East') whenever a new record is inserted.\n\n\nCREATE OR REPLACE FUNCTION winddir_to_text(winddir NUMERIC)\nRETURNS TEXT AS $$\nBEGIN\n    IF NEW.winddir IS NULL THEN\n        NEW.winddir_text := NULL;\n    ELSIF NEW.winddir >= 22.5 AND NEW.winddir < 67.5 THEN\n        NEW.winddir_text := 'North-East';\n    ELSIF NEW.winddir >= 67.5 AND NEW.winddir < 112.5 THEN\n        NEW.winddir_text := 'East';\n    ELSIF NEW.winddir >= 112.5 AND NEW.winddir < 157.5 THEN\n        NEW.winddir_text := 'South-East';\n    ELSIF NEW.winddir >= 157.5 AND NEW.winddir < 202.5 THEN\n        NEW.winddir_text := 'South';\n    ELSIF NEW.winddir >= 202.5 AND NEW.winddir < 247.5 THEN\n        NEW.winddir_text := 'South-West';\n    ELSIF NEW.winddir >= 247.5 AND NEW.winddir < 292.5 THEN\n        NEW.winddir_text := 'West';\n    ELSIF NEW.winddir >= 292.5 AND NEW.winddir < 337.5 THEN\n        NEW.winddir_text := 'North-West';\n    ELSE\n        NEW.winddir_text := 'North';\n    END IF;\n    RETURN NEW;\nEND;\n$$ LANGUAGE plpgsql;",
+        "height": 640,
+        "width": 480,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        960,
+        176
+      ],
+      "id": "7d788be8-8771-4bf4-9381-8c63bfa53c42",
+      "name": "Sticky Note3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Create/Check Table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create/Check Table": {
+      "main": [
+        [
+          {
+            "node": "Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuration": {
+      "main": [
+        [
+          {
+            "node": "Current Conditions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Current Conditions": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "225f85d2-b435-4dca-b429-f94bba414ca8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "57c643cbdd0f4d7050f61be632e228d72220f51edc33d308dc5f6eb6c3a119f8"
+  },
+  "id": "eNvA7KZMHoJaUD1N",
+  "tags": []
+}
