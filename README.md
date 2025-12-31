@@ -4,6 +4,8 @@ This n8n workflow fetches **current observations** from a
 **Weather Underground Personal Weather Station (PWS)** and stores them in a PostgreSQL database.
 
 ---
+<img width="1118" height="556" alt="Screenshot_20251231_183542" src="https://github.com/user-attachments/assets/a59284e9-3ada-402c-823f-5a008c5fb94d" />
+
 
 ## Features
 
